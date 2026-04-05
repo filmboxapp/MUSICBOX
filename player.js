@@ -34,6 +34,9 @@ const PlayerManager = {
                 }
             });
         }
+        
+        // Iniciar monitoreo del estado del reproductor
+        this.startStateMonitor();
     },
 
     playTrack(track) {
@@ -48,6 +51,7 @@ const PlayerManager = {
         this.player.playVideo();
         AppState.isPlaying = true;
         this.startUpdateInterval();
+        this.updatePlayButton();
     },
 
     play() {
@@ -141,6 +145,7 @@ const PlayerManager = {
     onTrackEnded() {
         console.log('Track finalizado');
         AppState.isPlaying = false;
+        this.updatePlayButton();
         // Reproducir siguiente si hay playlist
         if (AppState.playlist.length > 1) {
             AppState.currentIndex = (AppState.currentIndex + 1) % AppState.playlist.length;
@@ -187,72 +192,137 @@ const PlayerManager = {
         return `${minutes}:${secs.toString().padStart(2, '0')}`;
     },
 
+    // Monitorear cambios de estado en tiempo real
+    startStateMonitor() {
+        setInterval(() => {
+            if (!this.isPlayerReady) return;
+            
+            const playerState = this.player.getPlayerState();
+            
+            // -1: desconocido, 0: terminado, 1: reproduciendo, 2: pausado, 3: buffering, 5: video cargado
+            if (playerState === 1) {
+                // Reproduciendo
+                if (!AppState.isPlaying) {
+                    AppState.isPlaying = true;
+                    this.updatePlayButton();
+                }
+            } else if (playerState === 2) {
+                // Pausado
+                if (AppState.isPlaying) {
+                    AppState.isPlaying = false;
+                    this.updatePlayButton();
+                }
+            }
+        }, 500);
+    },
+
     updatePlayButton() {
+        // Actualizar botón principal del reproductor
         const playBtn = document.getElementById('player-play-btn');
-        const playIcon = playBtn.querySelector('.play-icon');
-        const pauseIcon = playBtn.querySelector('.pause-icon');
+        if (playBtn) {
+            const playIcon = playBtn.querySelector('.play-icon');
+            const pauseIcon = playBtn.querySelector('.pause-icon');
+            
+            if (AppState.isPlaying) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        }
         
-        if (AppState.isPlaying) {
-            playIcon.classList.add('hidden');
-            pauseIcon.classList.remove('hidden');
-        } else {
-            playIcon.classList.remove('hidden');
-            pauseIcon.classList.add('hidden');
+        // Actualizar mini reproductor
+        const miniPlayBtn = document.getElementById('mini-play-btn');
+        if (miniPlayBtn) {
+            if (AppState.isPlaying) {
+                miniPlayBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                `;
+            } else {
+                miniPlayBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                `;
+            }
         }
     },
 
     setupEventListeners() {
         // Play/Pause principal
-        document.getElementById('player-play-btn').addEventListener('click', () => {
-            if (AppState.isPlaying) {
-                this.pause();
-            } else {
-                this.play();
-            }
-        });
+        const playerPlayBtn = document.getElementById('player-play-btn');
+        if (playerPlayBtn) {
+            playerPlayBtn.addEventListener('click', () => {
+                if (AppState.isPlaying) {
+                    this.pause();
+                } else {
+                    this.play();
+                }
+            });
+        }
 
         // Mini play/pause
-        document.getElementById('mini-play-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (AppState.isPlaying) {
-                this.pause();
-            } else {
-                this.play();
-            }
-        });
+        const miniPlayBtn = document.getElementById('mini-play-btn');
+        if (miniPlayBtn) {
+            miniPlayBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (AppState.isPlaying) {
+                    this.pause();
+                } else {
+                    this.play();
+                }
+            });
+        }
 
         // Siguiente
-        document.getElementById('player-next-btn').addEventListener('click', () => {
-            this.playNext();
-        });
+        const nextBtn = document.getElementById('player-next-btn');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                this.playNext();
+            });
+        }
 
         // Anterior
-        document.getElementById('player-prev-btn').addEventListener('click', () => {
-            this.playPrevious();
-        });
+        const prevBtn = document.getElementById('player-prev-btn');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                this.playPrevious();
+            });
+        }
 
         // Barra de progreso
         const progressRange = document.getElementById('progress-range');
-        progressRange.addEventListener('change', (e) => {
-            this.seek(parseFloat(e.target.value));
-        });
+        if (progressRange) {
+            progressRange.addEventListener('change', (e) => {
+                this.seek(parseFloat(e.target.value));
+            });
+        }
 
         // Botón favorito
-        document.getElementById('player-favorite-btn').addEventListener('click', () => {
-            if (!AppState.currentTrack) return;
-            const isFav = toggleFavorite(AppState.currentTrack);
-            const btn = document.getElementById('player-favorite-btn');
-            if (isFav) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
+        const favoriteBtn = document.getElementById('player-favorite-btn');
+        if (favoriteBtn) {
+            favoriteBtn.addEventListener('click', () => {
+                if (!AppState.currentTrack) return;
+                const isFav = toggleFavorite(AppState.currentTrack);
+                const btn = document.getElementById('player-favorite-btn');
+                if (isFav) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
 
         // Botón agregar a playlist (no implementado aún)
-        document.getElementById('player-playlist-btn').addEventListener('click', () => {
-            console.log('Agregar a playlist - próxima feature');
-        });
+        const playlistBtn = document.getElementById('player-playlist-btn');
+        if (playlistBtn) {
+            playlistBtn.addEventListener('click', () => {
+                console.log('Agregar a playlist - próxima feature');
+            });
+        }
     },
 
     playNext() {
