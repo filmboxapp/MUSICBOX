@@ -217,18 +217,23 @@ const PlayerManager = {
     },
 
     updatePlayButton() {
-        // Actualizar botón principal del reproductor
+        // Actualizar botón principal del reproductor fullscreen
         const playBtn = document.getElementById('player-play-btn');
         if (playBtn) {
-            const playIcon = playBtn.querySelector('.play-icon');
-            const pauseIcon = playBtn.querySelector('.pause-icon');
-            
             if (AppState.isPlaying) {
-                playIcon.classList.add('hidden');
-                pauseIcon.classList.remove('hidden');
+                // Mostrar solo icono de pausa
+                playBtn.innerHTML = `
+                    <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                `;
             } else {
-                playIcon.classList.remove('hidden');
-                pauseIcon.classList.add('hidden');
+                // Mostrar solo icono de play
+                playBtn.innerHTML = `
+                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                `;
             }
         }
         
