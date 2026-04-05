@@ -148,33 +148,6 @@ function handlePageSearch(e) {
     performSearch(query);
 }
 
-function handleSearchKeypress(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        const query = e.target.value.trim();
-        if (query.length > 0) {
-            AppState.lastSearchQuery = query;
-            performSearch(query);
-        }
-    }
-}
-
-async function performSearch(query) {
-    try {
-        // Mostrar loading
-        const container = document.getElementById('search-page-container');
-        container.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
-        
-        const results = await YouTubeAPI.search(query, 20);
-        AppState.searchResults = results;
-        
-        displayPageSearchResults(results);
-    } catch (error) {
-        console.error('Error en búsqueda:', error);
-        showError('Error al buscar canciones');
-    }
-}
-
 // Mostrar resultados en página
 function displayPageSearchResults(results) {
     const container = document.getElementById('search-page-container');
@@ -192,10 +165,31 @@ function displayPageSearchResults(results) {
     } else {
         container.innerHTML = results.map(track => createTrackListItem(track)).join('');
         
-        container.querySelectorAll('.track-list-item').forEach((item, index) => {
-            item.addEventListener('click', () => playTrack(results[index]));
+        // Solo agregar evento al botón play, no al item completo
+        container.querySelectorAll('.track-list-play').forEach((btn, index) => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                playTrack(results[index]);
+            });
         });
     }
+}
+
+function createTrackListItem(track) {
+    return `
+        <div class="track-list-item" data-video-id="${track.videoId}">
+            <img src="${track.thumbnail}" alt="" class="track-list-thumbnail">
+            <div class="track-list-info">
+                <div class="track-list-title">${track.title}</div>
+                <div class="track-list-channel">${track.channel}</div>
+            </div>
+            <button class="track-list-play" aria-label="Reproducir">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+        </div>
+    `;
 }
 
 // ==================== NAVEGACIÓN ==================== */
