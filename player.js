@@ -220,20 +220,19 @@ const PlayerManager = {
         // Actualizar botón principal del reproductor fullscreen
         const playBtn = document.getElementById('player-play-btn');
         if (playBtn) {
-            if (AppState.isPlaying) {
-                // Mostrar solo icono de pausa
-                playBtn.innerHTML = `
-                    <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                    </svg>
-                `;
-            } else {
-                // Mostrar solo icono de play
-                playBtn.innerHTML = `
-                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                `;
+            const playIcon = playBtn.querySelector('.play-icon');
+            const pauseIcon = playBtn.querySelector('.pause-icon');
+            
+            if (playIcon && pauseIcon) {
+                if (AppState.isPlaying) {
+                    // Mostrar solo pausa
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                } else {
+                    // Mostrar solo play
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                }
             }
         }
         
@@ -306,6 +305,15 @@ const PlayerManager = {
             });
         }
 
+        // Botón retroceder 10 segundos
+        const rewindBtn = document.getElementById('player-rewind-btn');
+        if (rewindBtn) {
+            rewindBtn.addEventListener('click', () => {
+                const newTime = Math.max(0, this.getCurrentTime() - 10);
+                this.seek(newTime);
+            });
+        }
+
         // Botón favorito
         const favoriteBtn = document.getElementById('player-favorite-btn');
         if (favoriteBtn) {
@@ -321,11 +329,13 @@ const PlayerManager = {
             });
         }
 
-        // Botón agregar a playlist (no implementado aún)
-        const playlistBtn = document.getElementById('player-playlist-btn');
-        if (playlistBtn) {
-            playlistBtn.addEventListener('click', () => {
-                console.log('Agregar a playlist - próxima feature');
+        // Botón adelantar 10 segundos
+        const forwardBtn = document.getElementById('player-forward-btn');
+        if (forwardBtn) {
+            forwardBtn.addEventListener('click', () => {
+                const duration = this.getDuration();
+                const newTime = Math.min(duration, this.getCurrentTime() + 10);
+                this.seek(newTime);
             });
         }
     },
