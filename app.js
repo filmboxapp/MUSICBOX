@@ -384,8 +384,8 @@ function playTrack(track) {
     AppState.currentIndex = 0;
     
     addToHistory(track);
-    openPlayerModal();
     PlayerManager.playTrack(track);
+    openPlayerModal();
 }
 
 function openPlayerModal() {
@@ -395,10 +395,17 @@ function openPlayerModal() {
     }
     
     const modal = document.getElementById('player-modal');
+    console.log('Modal encontrado:', !!modal);
+    
     if (modal) {
+        console.log('Agregando clase active al modal');
+        modal.classList.remove('hidden');
         modal.classList.add('active');
         updatePlayerUI();
         document.body.style.overflow = 'hidden';
+        console.log('✅ Modal abierto');
+    } else {
+        console.error('❌ Modal no encontrado en el DOM');
     }
 }
 
@@ -406,6 +413,7 @@ function closePlayerModal() {
     const modal = document.getElementById('player-modal');
     if (modal) {
         modal.classList.remove('active');
+        modal.classList.add('hidden');
     }
     document.body.style.overflow = '';
 }
@@ -414,25 +422,37 @@ function updatePlayerUI() {
     const track = AppState.currentTrack;
     if (!track) return;
     
-    document.getElementById('player-title').textContent = track.title;
-    document.getElementById('player-channel').textContent = track.channel;
-    document.getElementById('player-thumbnail').src = track.thumbnail;
+    const playerTitle = document.getElementById('player-title');
+    const playerChannel = document.getElementById('player-channel');
+    const playerThumbnail = document.getElementById('player-thumbnail');
+    const miniThumbnail = document.getElementById('mini-thumbnail');
+    const miniTitle = document.getElementById('mini-title');
+    const miniChannel = document.getElementById('mini-channel');
+    const miniPlayer = document.getElementById('mini-player');
     
-    document.getElementById('mini-thumbnail').src = track.thumbnail;
-    document.getElementById('mini-title').textContent = track.title;
-    document.getElementById('mini-channel').textContent = track.channel;
+    if (playerTitle) playerTitle.textContent = track.title;
+    if (playerChannel) playerChannel.textContent = track.channel;
+    if (playerThumbnail) playerThumbnail.src = track.thumbnail;
     
-    document.getElementById('mini-player').classList.remove('hidden');
+    if (miniThumbnail) miniThumbnail.src = track.thumbnail;
+    if (miniTitle) miniTitle.textContent = track.title;
+    if (miniChannel) miniChannel.textContent = track.channel;
+    
+    if (miniPlayer) {
+        miniPlayer.classList.remove('hidden');
+    }
     
     updateFavoriteButton();
 }
 
 function updateFavoriteButton() {
     const btn = document.getElementById('player-favorite-btn');
-    if (isFavorite(AppState.currentTrack.videoId)) {
-        btn.classList.add('active');
-    } else {
-        btn.classList.remove('active');
+    if (btn && AppState.currentTrack) {
+        if (isFavorite(AppState.currentTrack.videoId)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
     }
 }
 
