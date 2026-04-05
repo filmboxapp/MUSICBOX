@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#00FF88">
+    <meta name="description" content="PWA Music - Reproductor de música con YouTube">
+    <title>PWA Music</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23000000' width='192' height='192'/><path fill='%2300FF88' d='M96 40c-30.9 0-56 25.1-56 56s25.1 56 56 56 56-25.1 56-56-25.1-56-56-56zm0 100c-24.3 0-44-19.7-44-44s19.7-44 44-44 44 19.7 44 44-19.7 44-44 44zm18-59.5L82 76v40l32-18.5v-40z'/></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23000000' width='192' height='192'/><path fill='%2300FF88' d='M96 40c-30.9 0-56 25.1-56 56s25.1 56 56 56 56-25.1 56-56-25.1-56-56-56zm0 100c-24.3 0-44-19.7-44-44s19.7-44 44-44 44 19.7 44 44-19.7 44-44 44zm18-59.5L82 76v40l32-18.5v-40z'/>
+</svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Contenedor Principal -->
+    <div id="app-container" class="app-container">
+        
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <svg class="logo" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+                        <rect fill="#000000" width="192" height="192"/>
+                        <path fill="#00FF88" d="M96 40c-30.9 0-56 25.1-56 56s25.1 56 56 56 56-25.1 56-56-25.1-56-56-56zm0 100c-24.3 0-44-19.7-44-44s19.7-44 44-44 44 19.7 44 44-19.7 44-44 44zm18-59.5L82 76v40l32-18.5v-40z"/>
+                    </svg>
+                    <h1 class="app-title">PWA Music</h1>
+                </div>
+                <button id="search-toggle" class="search-toggle" aria-label="Buscar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Barra de búsqueda (oculta por defecto) -->
+            <div id="search-bar" class="search-bar hidden">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input" 
+                    placeholder="Buscar música, artistas..."
+                    autocomplete="off"
+                >
+                <button id="search-close" class="search-close" aria-label="Cerrar búsqueda">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div id="search-results" class="search-results hidden"></div>
+            </div>
+        </header>
+
+        <!-- Contenido Principal -->
+        <main class="main-content">
+            <!-- Pantalla Home -->
+            <section id="home-screen" class="screen active">
+                <div class="screen-content">
+                    <!-- Tendencias -->
+                    <div class="section">
+                        <h2 class="section-title">Tendencias</h2>
+                        <div id="trends-container" class="tracks-grid">
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton"></div>
+                        </div>
+                    </div>
+
+                    <!-- Recomendados -->
+                    <div class="section">
+                        <h2 class="section-title">Recomendados</h2>
+                        <div id="recommended-container" class="tracks-grid">
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton"></div>
+                        </div>
+                    </div>
+
+                    <!-- Nuevos Lanzamientos -->
+                    <div class="section">
+                        <h2 class="section-title">Nuevos Lanzamientos</h2>
+                        <div id="new-releases-container" class="tracks-grid">
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton"></div>
+                        </div>
+                    </div>
+
+                    <!-- Historial -->
+                    <div id="history-section" class="section hidden">
+                        <h2 class="section-title">Escuchados Recientemente</h2>
+                        <div id="history-container" class="tracks-grid"></div>
+                    </div>
+
+                    <!-- Favoritos -->
+                    <div id="favorites-section" class="section hidden">
+                        <h2 class="section-title">Mis Favoritos</h2>
+                        <div id="favorites-container" class="tracks-grid"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Mini Reproductor (Fixed Bottom) -->
+        <div id="mini-player" class="mini-player hidden">
+            <div class="mini-player-content">
+                <img id="mini-thumbnail" class="mini-thumbnail" src="" alt="Thumbnail">
+                <div class="mini-info">
+                    <div id="mini-title" class="mini-title">Selecciona una canción</div>
+                    <div id="mini-channel" class="mini-channel">-</div>
+                </div>
+                <button id="mini-play-btn" class="mini-play-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Reproductor Fullscreen (Modal) -->
+        <div id="player-modal" class="player-modal hidden">
+            <div class="player-overlay" id="player-overlay"></div>
+            <div class="player-content">
+                <!-- Botón Cerrar -->
+                <button id="player-close" class="player-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+
+                <!-- Thumbnail Grande -->
+                <div class="player-thumbnail-container">
+                    <img id="player-thumbnail" class="player-thumbnail" src="" alt="Album Art">
+                    <div class="player-visualizer">
+                        <div class="visualizer-bar"></div>
+                        <div class="visualizer-bar"></div>
+                        <div class="visualizer-bar"></div>
+                        <div class="visualizer-bar"></div>
+                        <div class="visualizer-bar"></div>
+                    </div>
+                </div>
+
+                <!-- Información -->
+                <div class="player-info">
+                    <h2 id="player-title" class="player-title">-</h2>
+                    <p id="player-channel" class="player-channel">-</p>
+                </div>
+
+                <!-- Barra de Progreso -->
+                <div class="player-progress-section">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                        <input 
+                            type="range" 
+                            id="progress-range" 
+                            class="progress-range" 
+                            min="0" 
+                            max="100" 
+                            value="0"
+                            aria-label="Progreso de reproducción"
+                        >
+                    </div>
+                    <div class="time-display">
+                        <span id="current-time">0:00</span>
+                        <span id="total-time">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Controles Principales -->
+                <div class="player-controls">
+                    <button id="player-prev-btn" class="control-btn" aria-label="Anterior">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6z"/>
+                        </svg>
+                    </button>
+                    <button id="player-play-btn" class="control-btn play-btn" aria-label="Reproducir/Pausa">
+                        <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <svg class="pause-icon hidden" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                        </svg>
+                    </button>
+                    <button id="player-next-btn" class="control-btn" aria-label="Siguiente">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 18h2V6h-2v12zm-11-7l8.5-6v12z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Controles Secundarios -->
+                <div class="player-secondary-controls">
+                    <button id="player-favorite-btn" class="control-btn secondary" aria-label="Favorito">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                    </button>
+                    <button id="player-playlist-btn" class="control-btn secondary" aria-label="Agregar a playlist">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Bottom (Tabs) -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-screen="home" aria-label="Inicio">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                </svg>
+                <span>Inicio</span>
+            </button>
+            <button class="nav-btn" data-screen="search" aria-label="Buscar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <span>Buscar</span>
+            </button>
+            <button class="nav-btn" data-screen="favorites" aria-label="Favoritos">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>Favoritos</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
+    <!-- Scripts -->
+    <script src="youtube.js"></script>
+    <script src="player.js"></script>
+    <script src="app.js"></script>
+
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('Service Worker registrado'))
+                .catch(err => console.log('Error registrando Service Worker:', err));
+        }
+    </script>
+</body>
+</html>
