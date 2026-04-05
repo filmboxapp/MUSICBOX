@@ -281,22 +281,6 @@ const PlayerManager = {
             });
         }
 
-        // Siguiente
-        const nextBtn = document.getElementById('player-next-btn');
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                this.playNext();
-            });
-        }
-
-        // Anterior
-        const prevBtn = document.getElementById('player-prev-btn');
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                this.playPrevious();
-            });
-        }
-
         // Barra de progreso
         const progressRange = document.getElementById('progress-range');
         if (progressRange) {
@@ -337,22 +321,6 @@ const PlayerManager = {
                 const newTime = Math.min(duration, this.getCurrentTime() + 10);
                 this.seek(newTime);
             });
-        }
-    },
-
-    playNext() {
-        if (AppState.playlist.length === 0) return;
-        AppState.currentIndex = (AppState.currentIndex + 1) % AppState.playlist.length;
-        this.playTrack(AppState.playlist[AppState.currentIndex]);
-    },
-
-    playPrevious() {
-        if (AppState.playlist.length === 0) return;
-        if (this.currentTime > 3) {
-            this.seek(0);
-        } else {
-            AppState.currentIndex = (AppState.currentIndex - 1 + AppState.playlist.length) % AppState.playlist.length;
-            this.playTrack(AppState.playlist[AppState.currentIndex]);
         }
     }
 };
