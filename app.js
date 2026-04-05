@@ -8,7 +8,8 @@ const AppState = {
     favorites: [],
     searchResults: [],
     isSearching: false,
-    currentScreen: 'home'
+    currentScreen: 'home',
+    lastSearchQuery: ''
 };
 
 // Configuración
@@ -30,12 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeApp() {
-    // Petición de permisos para reproducción de audio
     if (typeof YT === 'undefined') {
         console.warn('YouTube API aún no cargada');
     }
     
-    // Verificar instalación en pantalla de inicio
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         console.log('PWA lista para instalar');
@@ -68,7 +67,6 @@ function saveStoredData() {
 }
 
 function addToHistory(track) {
-    // Evitar duplicados consecutivos
     if (AppState.history[0]?.videoId !== track.videoId) {
         AppState.history.unshift(track);
         if (AppState.history.length > CONFIG.MAX_HISTORY) {
@@ -88,7 +86,7 @@ function toggleFavorite(track) {
     }
     saveStoredData();
     updateFavoritesUI();
-    return index === -1; // retorna true si fue agregado
+    return index === -1;
 }
 
 function isFavorite(videoId) {
@@ -97,13 +95,24 @@ function isFavorite(videoId) {
 
 // ==================== EVENT LISTENERS ==================== */
 function setupEventListeners() {
-    // Header search
-    document.getElementById('search-toggle').addEventListener('click', toggleSearchBar);
-    document.getElementById('search-close').addEventListener('click', closeSearchBar);
+    // Search page input
+    const pageSearchInput = document.getElementById('page-search-input');
+    pageSearchInput.addEventListener('input', debounce(handlePageSearch, CONFIG.DEBOUNCE_TIME));
+    pageSearchInput.addEventListener('keypress', handleSearchKeypress);
     
-    // Search input
-    const searchInput = document.getElementById('search-input');
-    searchInput.addEventListener('input', debounce(handleSearch, CONFIG.DEBOUNCE_TIME));
+    // Clear search button
+    document.getElementById('page-search-clear').addEventListener('click', () => {
+        pageSearchInput.value = '';
+        document.getElementById('search-page-container').innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <p>Escribe para buscar canciones</p>
+            </div>
+        `;
+    });
     
     // Navigation tabs
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -118,64 +127,75 @@ function setupEventListeners() {
     document.getElementById('mini-player').addEventListener('click', openPlayerModal);
 }
 
-// ==================== BÚSQUEDA ==================== */
-function toggleSearchBar() {
-    const searchBar = document.getElementById('search-bar');
-    searchBar.classList.toggle('hidden');
-    if (!searchBar.classList.contains('hidden')) {
-        document.getElementById('search-input').focus();
-    }
-}
-
-function closeSearchBar() {
-    document.getElementById('search-bar').classList.add('hidden');
-    document.getElementById('search-results').classList.add('hidden');
-    document.getElementById('search-input').value = '';
-}
-
-function handleSearch(e) {
+// ==================== BÚSQUEDA EN PÁGINA ==================== */
+function handlePageSearch(e) {
     const query = e.target.value.trim();
     
     if (query.length < 2) {
-        document.getElementById('search-results').classList.add('hidden');
+        document.getElementById('search-page-container').innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <p>Escribe para buscar canciones</p>
+            </div>
+        `;
         return;
     }
     
-    searchMusic(query);
+    AppState.lastSearchQuery = query;
+    performSearch(query);
 }
 
-async function searchMusic(query) {
+function handleSearchKeypress(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+            AppState.lastSearchQuery = query;
+            performSearch(query);
+        }
+    }
+}
+
+async function performSearch(query) {
     try {
-        const results = await YouTubeAPI.search(query, 10);
-        displaySearchResults(results);
+        // Mostrar loading
+        const container = document.getElementById('search-page-container');
+        container.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
+        
+        const results = await YouTubeAPI.search(query, 20);
+        AppState.searchResults = results;
+        
+        displayPageSearchResults(results);
     } catch (error) {
         console.error('Error en búsqueda:', error);
         showError('Error al buscar canciones');
     }
 }
 
-function displaySearchResults(results) {
-    const resultsContainer = document.getElementById('search-results');
-    resultsContainer.innerHTML = results.map(track => `
-        <div class="search-result-item" data-video-id="${track.videoId}">
-            <img src="${track.thumbnail}" class="search-result-thumbnail" alt="">
-            <div class="search-result-info">
-                <div class="search-result-title">${track.title}</div>
-                <div class="search-result-channel">${track.channel}</div>
+// Mostrar resultados en página
+function displayPageSearchResults(results) {
+    const container = document.getElementById('search-page-container');
+    
+    if (results.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <p>No se encontraron resultados para "${AppState.lastSearchQuery}"</p>
             </div>
-        </div>
-    `).join('');
-    
-    resultsContainer.classList.remove('hidden');
-    
-    resultsContainer.querySelectorAll('.search-result-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const videoId = item.dataset.videoId;
-            const track = results.find(t => t.videoId === videoId);
-            playTrack(track);
-            closeSearchBar();
+        `;
+    } else {
+        container.innerHTML = results.map(track => createTrackListItem(track)).join('');
+        
+        container.querySelectorAll('.track-list-item').forEach((item, index) => {
+            item.addEventListener('click', () => playTrack(results[index]));
         });
-    });
+    }
 }
 
 // ==================== NAVEGACIÓN ==================== */
@@ -190,14 +210,12 @@ function handleNavigation(screen) {
         newScreen.classList.add('active');
     }
     
-    // Actualizar botones nav
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.screen === screen);
     });
     
     AppState.currentScreen = screen;
     
-    // Cargar contenido específico
     if (screen === 'favorites') {
         updateFavoritesUI();
     }
@@ -206,15 +224,12 @@ function handleNavigation(screen) {
 // ==================== PANTALLA HOME ==================== */
 async function loadHomeContent() {
     try {
-        // Cargar tendencias
         const trends = await YouTubeAPI.search('música trending', 6);
         displayTracks('trends-container', trends);
         
-        // Cargar recomendados
         const recommended = await YouTubeAPI.search('música electrónica', 6);
         displayTracks('recommended-container', recommended);
         
-        // Cargar nuevos lanzamientos
         const newReleases = await YouTubeAPI.search('nuevos estrenos', 6);
         displayTracks('new-releases-container', newReleases);
         
@@ -259,6 +274,23 @@ function createTrackCard(track) {
     `;
 }
 
+function createTrackListItem(track) {
+    return `
+        <div class="track-list-item" data-video-id="${track.videoId}">
+            <img src="${track.thumbnail}" alt="" class="track-list-thumbnail">
+            <div class="track-list-info">
+                <div class="track-list-title">${track.title}</div>
+                <div class="track-list-channel">${track.channel}</div>
+            </div>
+            <button class="track-list-play" onclick="event.stopPropagation();">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+        </div>
+    `;
+}
+
 function updateHistoryUI() {
     if (AppState.history.length > 0) {
         const historySection = document.getElementById('history-section');
@@ -268,22 +300,27 @@ function updateHistoryUI() {
 }
 
 function updateFavoritesUI() {
-    const favoritesContainer = document.getElementById('favorites-container');
-    const favoritesSection = document.getElementById('favorites-section');
+    const favoritesContainer = document.getElementById('favorites-main-container');
     
     if (AppState.favorites.length > 0) {
-        favoritesSection.classList.remove('hidden');
         favoritesContainer.innerHTML = AppState.favorites.map(track => 
-            createTrackCard(track)
+            createTrackListItem(track)
         ).join('');
         
-        favoritesContainer.querySelectorAll('.track-card').forEach((card, index) => {
-            card.addEventListener('click', () => {
+        favoritesContainer.querySelectorAll('.track-list-item').forEach((item, index) => {
+            item.addEventListener('click', () => {
                 playTrack(AppState.favorites[index]);
             });
         });
     } else {
-        favoritesSection.classList.add('hidden');
+        favoritesContainer.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <p>No hay canciones favoritas aún</p>
+            </div>
+        `;
     }
 }
 
@@ -304,10 +341,7 @@ function openPlayerModal() {
     const modal = document.getElementById('player-modal');
     modal.classList.add('active');
     
-    // Actualizar interfaz del reproductor
     updatePlayerUI();
-    
-    // Prevenir scroll del body
     document.body.style.overflow = 'hidden';
 }
 
@@ -324,15 +358,12 @@ function updatePlayerUI() {
     document.getElementById('player-channel').textContent = track.channel;
     document.getElementById('player-thumbnail').src = track.thumbnail;
     
-    // Actualizar mini player
     document.getElementById('mini-thumbnail').src = track.thumbnail;
     document.getElementById('mini-title').textContent = track.title;
     document.getElementById('mini-channel').textContent = track.channel;
     
-    // Mostrar mini player
     document.getElementById('mini-player').classList.remove('hidden');
     
-    // Actualizar estado del botón favorito
     updateFavoriteButton();
 }
 
@@ -356,43 +387,6 @@ function debounce(func, time) {
 
 function showError(message) {
     console.error(message);
-    // Podrías agregar un toast aquí
 }
-
-// Crear pantalla de búsqueda (agregada al HTML al hacer clic)
-function createSearchScreen() {
-    const screen = document.createElement('section');
-    screen.id = 'search-screen';
-    screen.className = 'screen';
-    screen.innerHTML = `
-        <div class="screen-content">
-            <div class="section">
-                <h2 class="section-title">Resultados de búsqueda</h2>
-                <div id="advanced-search-results" class="tracks-grid"></div>
-            </div>
-        </div>
-    `;
-    document.querySelector('.main-content').appendChild(screen);
-}
-
-// Crear pantalla de favoritos
-function createFavoritesScreen() {
-    const screen = document.createElement('section');
-    screen.id = 'favorites-screen';
-    screen.className = 'screen';
-    screen.innerHTML = `
-        <div class="screen-content">
-            <div class="section">
-                <h2 class="section-title">Mis Favoritos</h2>
-                <div id="favorites-main-container" class="tracks-grid"></div>
-            </div>
-        </div>
-    `;
-    document.querySelector('.main-content').appendChild(screen);
-}
-
-// Inicializar pantallas
-createSearchScreen();
-createFavoritesScreen();
 
 console.log('✅ App.js cargado correctamente');
