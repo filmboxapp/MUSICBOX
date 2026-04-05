@@ -97,34 +97,54 @@ function isFavorite(videoId) {
 function setupEventListeners() {
     // Search page input
     const pageSearchInput = document.getElementById('page-search-input');
-    pageSearchInput.addEventListener('input', debounce(handlePageSearch, CONFIG.DEBOUNCE_TIME));
-    pageSearchInput.addEventListener('keypress', handleSearchKeypress);
+    if (pageSearchInput) {
+        pageSearchInput.addEventListener('input', debounce(handlePageSearch, CONFIG.DEBOUNCE_TIME));
+        pageSearchInput.addEventListener('keypress', handleSearchKeypress);
+    }
     
     // Clear search button
-    document.getElementById('page-search-clear').addEventListener('click', () => {
-        pageSearchInput.value = '';
-        document.getElementById('search-page-container').innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                </svg>
-                <p>Escribe para buscar canciones</p>
-            </div>
-        `;
-    });
+    const clearBtn = document.getElementById('page-search-clear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            pageSearchInput.value = '';
+            document.getElementById('search-page-container').innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <p>Escribe para buscar canciones</p>
+                </div>
+            `;
+        });
+    }
     
     // Navigation tabs
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => handleNavigation(btn.dataset.screen));
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const screen = btn.getAttribute('data-screen');
+            console.log('Navegando a:', screen);
+            handleNavigation(screen);
+        });
     });
     
     // Player controls
-    document.getElementById('player-close').addEventListener('click', closePlayerModal);
-    document.getElementById('player-overlay').addEventListener('click', closePlayerModal);
+    const playerClose = document.getElementById('player-close');
+    if (playerClose) {
+        playerClose.addEventListener('click', closePlayerModal);
+    }
+    
+    const playerOverlay = document.getElementById('player-overlay');
+    if (playerOverlay) {
+        playerOverlay.addEventListener('click', closePlayerModal);
+    }
     
     // Mini player click
-    document.getElementById('mini-player').addEventListener('click', openPlayerModal);
+    const miniPlayer = document.getElementById('mini-player');
+    if (miniPlayer) {
+        miniPlayer.addEventListener('click', openPlayerModal);
+    }
 }
 
 // ==================== BÚSQUEDA EN PÁGINA ==================== */
@@ -146,6 +166,33 @@ function handlePageSearch(e) {
     
     AppState.lastSearchQuery = query;
     performSearch(query);
+}
+
+function handleSearchKeypress(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+            AppState.lastSearchQuery = query;
+            performSearch(query);
+        }
+    }
+}
+
+async function performSearch(query) {
+    try {
+        // Mostrar loading
+        const container = document.getElementById('search-page-container');
+        container.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div>';
+        
+        const results = await YouTubeAPI.search(query, 20);
+        AppState.searchResults = results;
+        
+        displayPageSearchResults(results);
+    } catch (error) {
+        console.error('Error en búsqueda:', error);
+        showError('Error al buscar canciones');
+    }
 }
 
 // Mostrar resultados en página
@@ -194,18 +241,28 @@ function createTrackListItem(track) {
 
 // ==================== NAVEGACIÓN ==================== */
 function handleNavigation(screen) {
-    const currentScreen = document.getElementById(`${AppState.currentScreen}-screen`);
-    if (currentScreen) {
-        currentScreen.classList.remove('active');
-    }
+    console.log('handleNavigation llamada con:', screen);
     
+    // Ocultar pantalla actual
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(s => s.classList.remove('active'));
+    
+    // Mostrar nueva pantalla
     const newScreen = document.getElementById(`${screen}-screen`);
     if (newScreen) {
         newScreen.classList.add('active');
+        console.log('Pantalla activada:', screen);
+    } else {
+        console.error('Pantalla no encontrada:', `${screen}-screen`);
     }
     
+    // Actualizar botones nav
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.screen === screen);
+        if (btn.getAttribute('data-screen') === screen) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
     });
     
     AppState.currentScreen = screen;
@@ -218,13 +275,18 @@ function handleNavigation(screen) {
 // ==================== PANTALLA HOME ==================== */
 async function loadHomeContent() {
     try {
+        console.log('Cargando contenido del home...');
+        
         const trends = await YouTubeAPI.search('música trending', 6);
+        console.log('Tendencias cargadas:', trends.length);
         displayTracks('trends-container', trends);
         
         const recommended = await YouTubeAPI.search('música electrónica', 6);
+        console.log('Recomendados cargados:', recommended.length);
         displayTracks('recommended-container', recommended);
         
         const newReleases = await YouTubeAPI.search('nuevos estrenos', 6);
+        console.log('Nuevos lanzamientos cargados:', newReleases.length);
         displayTracks('new-releases-container', newReleases);
         
         updateHistoryUI();
@@ -236,6 +298,11 @@ async function loadHomeContent() {
 
 function displayTracks(containerId, tracks) {
     const container = document.getElementById(containerId);
+    if (!container) {
+        console.error('Contenedor no encontrado:', containerId);
+        return;
+    }
+    
     container.innerHTML = tracks.map(track => createTrackCard(track)).join('');
     
     container.querySelectorAll('.track-card').forEach((card, index) => {
@@ -268,41 +335,32 @@ function createTrackCard(track) {
     `;
 }
 
-function createTrackListItem(track) {
-    return `
-        <div class="track-list-item" data-video-id="${track.videoId}">
-            <img src="${track.thumbnail}" alt="" class="track-list-thumbnail">
-            <div class="track-list-info">
-                <div class="track-list-title">${track.title}</div>
-                <div class="track-list-channel">${track.channel}</div>
-            </div>
-            <button class="track-list-play" onclick="event.stopPropagation();">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-            </button>
-        </div>
-    `;
-}
-
 function updateHistoryUI() {
     if (AppState.history.length > 0) {
         const historySection = document.getElementById('history-section');
-        historySection.classList.remove('hidden');
-        displayTracks('history-container', AppState.history.slice(0, 6));
+        if (historySection) {
+            historySection.classList.remove('hidden');
+            displayTracks('history-container', AppState.history.slice(0, 6));
+        }
     }
 }
 
 function updateFavoritesUI() {
     const favoritesContainer = document.getElementById('favorites-main-container');
     
+    if (!favoritesContainer) {
+        console.error('Contenedor de favoritos no encontrado');
+        return;
+    }
+    
     if (AppState.favorites.length > 0) {
         favoritesContainer.innerHTML = AppState.favorites.map(track => 
             createTrackListItem(track)
         ).join('');
         
-        favoritesContainer.querySelectorAll('.track-list-item').forEach((item, index) => {
-            item.addEventListener('click', () => {
+        favoritesContainer.querySelectorAll('.track-list-play').forEach((btn, index) => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 playTrack(AppState.favorites[index]);
             });
         });
@@ -320,6 +378,7 @@ function updateFavoritesUI() {
 
 // ==================== REPRODUCTOR ==================== */
 function playTrack(track) {
+    console.log('Reproduciendo:', track.title);
     AppState.currentTrack = track;
     AppState.playlist = [track];
     AppState.currentIndex = 0;
@@ -330,17 +389,24 @@ function playTrack(track) {
 }
 
 function openPlayerModal() {
-    if (!AppState.currentTrack) return;
+    if (!AppState.currentTrack) {
+        console.error('No hay canción para reproducir');
+        return;
+    }
     
     const modal = document.getElementById('player-modal');
-    modal.classList.add('active');
-    
-    updatePlayerUI();
-    document.body.style.overflow = 'hidden';
+    if (modal) {
+        modal.classList.add('active');
+        updatePlayerUI();
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 function closePlayerModal() {
-    document.getElementById('player-modal').classList.remove('active');
+    const modal = document.getElementById('player-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
     document.body.style.overflow = '';
 }
 
