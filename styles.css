@@ -256,6 +256,12 @@ html, body {
 .empty-state p {
     font-size: 14px;
 }
+
+/* ==================== HIDDEN CLASS ==================== */
+.hidden {
+    display: none !important;
+}
+
 /* ==================== MAIN CONTENT ==================== */
 .main-content {
     flex: 1;
@@ -775,7 +781,7 @@ html, body {
     color: var(--text-secondary);
 }
 
-/* Player Controls */
+/* ==================== PLAYER CONTROLS ==================== */
 .player-controls {
     display: flex;
     align-items: center;
@@ -837,6 +843,27 @@ html, body {
     box-shadow: 0 0 40px rgba(0, 255, 136, 0.8);
 }
 
+/* Asegurar que solo se muestre un ícono en el botón de play */
+#player-play-btn .play-icon,
+#player-play-btn .pause-icon {
+    transition: opacity var(--transition-fast);
+}
+
+#player-play-btn .play-icon.hidden,
+#player-play-btn .pause-icon.hidden {
+    display: none !important;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#player-play-btn .play-icon:not(.hidden),
+#player-play-btn .pause-icon:not(.hidden) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+}
+
 .play-icon, .pause-icon {
     width: 28px;
     height: 28px;
@@ -846,7 +873,7 @@ html, body {
     display: none;
 }
 
-/* Secondary Controls */
+/* ==================== SECONDARY CONTROLS ==================== */
 .player-secondary-controls {
     display: flex;
     gap: 16px;
@@ -981,4 +1008,4 @@ html, body {
         animation: none !important;
         transition: none !important;
     }
-        }
+    }
