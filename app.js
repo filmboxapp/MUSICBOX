@@ -20,10 +20,6 @@ const CONFIG = {
     CACHE_TIME: 3600000 // 1 hora
 };
 
-// ==================== VARIABLES GLOBALES DE REPRODUCCIÓN ==================== */
-let randomSongsPool = [];
-let relatedSongsPool = [];
-
 // ==================== INICIALIZACIÓN ==================== */
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🎵 PWA Music iniciando...');
@@ -149,9 +145,6 @@ function setupEventListeners() {
     if (miniPlayer) {
         miniPlayer.addEventListener('click', openPlayerModal);
     }
-    
-    // Cargar pool de canciones aleatorias al iniciar
-    loadRandomSongsPool();
 }
 
 // ==================== BÚSQUEDA EN PÁGINA ==================== */
@@ -383,108 +376,12 @@ function updateFavoritesUI() {
     }
 }
 
-// ==================== REPRODUCCIÓN ALEATORIA Y RELACIONADA ==================== */
-async function loadRelatedSongs(trackTitle) {
-    try {
-        // Buscar canciones relacionadas basado en el título actual
-        const query = trackTitle.split(' ').slice(0, 3).join(' '); // Primeras 3 palabras
-        relatedSongsPool = [];
-        
-        const results = await YouTubeAPI.search(query, 15);
-        relatedSongsPool = results.filter(track => track.videoId !== AppState.currentTrack.videoId);
-        
-        console.log('Canciones relacionadas cargadas:', relatedSongsPool.length);
-    } catch (error) {
-        console.error('Error cargando canciones relacionadas:', error);
-    }
-}
-
-async function loadRandomSongsPool() {
-    try {
-        // Cargar canciones aleatorias de diferentes géneros
-        const queries = ['música pop', 'música rock', 'música jazz', 'música indie', 'música electrónica'];
-        randomSongsPool = [];
-        
-        for (const query of queries) {
-            const results = await YouTubeAPI.search(query, 10);
-            randomSongsPool.push(...results);
-        }
-        
-        console.log('Pool de canciones aleatorias cargado:', randomSongsPool.length);
-    } catch (error) {
-        console.error('Error cargando pool de canciones:', error);
-    }
-}
-
-function playNextSong() {
-    // Si hay canciones relacionadas, tocar una de ellas
-    if (relatedSongsPool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * relatedSongsPool.length);
-        const track = relatedSongsPool[randomIndex];
-        
-        console.log('Reproduciendo canción relacionada:', track.title);
-        playTrack(track);
-        
-        // Remover la canción tocada del pool
-        relatedSongsPool.splice(randomIndex, 1);
-        return;
-    }
-    
-    // Si no hay más canciones relacionadas, tocar aleatorias
-    if (randomSongsPool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * randomSongsPool.length);
-        const track = randomSongsPool[randomIndex];
-        
-        console.log('Reproduciendo canción aleatoria:', track.title);
-        playTrack(track);
-        return;
-    }
-    
-    // Si no hay canciones en el pool, cargar aleatorias
-    loadRandomSongsPool().then(() => {
-        playNextSong();
-    });
-}
-
-function playPreviousSong() {
-    // Si hay canciones relacionadas, tocar una de ellas
-    if (relatedSongsPool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * relatedSongsPool.length);
-        const track = relatedSongsPool[randomIndex];
-        
-        console.log('Reproduciendo canción relacionada:', track.title);
-        playTrack(track);
-        
-        // Remover la canción tocada del pool
-        relatedSongsPool.splice(randomIndex, 1);
-        return;
-    }
-    
-    // Si no hay más canciones relacionadas, tocar aleatorias
-    if (randomSongsPool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * randomSongsPool.length);
-        const track = randomSongsPool[randomIndex];
-        
-        console.log('Reproduciendo canción aleatoria:', track.title);
-        playTrack(track);
-        return;
-    }
-    
-    // Si no hay canciones en el pool, cargar aleatorias
-    loadRandomSongsPool().then(() => {
-        playPreviousSong();
-    });
-}
-
 // ==================== REPRODUCTOR ==================== */
 function playTrack(track) {
     console.log('Reproduciendo:', track.title);
     AppState.currentTrack = track;
     AppState.playlist = [track];
     AppState.currentIndex = 0;
-    
-    // Cargar canciones relacionadas a esta
-    loadRelatedSongs(track.title);
     
     addToHistory(track);
     PlayerManager.playTrack(track);
