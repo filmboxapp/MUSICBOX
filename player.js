@@ -1,8 +1,4 @@
 // Player Manager - Maneja la reproducción con YouTube IFrame API
-
-// 🔥 SOLO VARIABLE NUEVA (no afecta nada)
-let relatedLoaded = false;
-
 const PlayerManager = {
     player: null,
     isPlayerReady: false,
@@ -11,6 +7,7 @@ const PlayerManager = {
     updateInterval: null,
 
     init() {
+        // YouTube API carga automáticamente el callback onYouTubeIframeAPIReady
         window.onYouTubeIframeAPIReady = () => this.onPlayerReady();
         this.setupEventListeners();
     },
@@ -19,6 +16,7 @@ const PlayerManager = {
         console.log('✅ YouTube Player API lista');
         this.isPlayerReady = true;
         
+        // Crear un contenedor invisible para el player
         if (!document.getElementById('youtube-player-container')) {
             const container = document.createElement('div');
             container.id = 'youtube-player-container';
@@ -37,6 +35,7 @@ const PlayerManager = {
             });
         }
         
+        // Iniciar monitoreo del estado del reproductor
         this.startStateMonitor();
     },
 
@@ -51,10 +50,6 @@ const PlayerManager = {
         this.player.loadVideoById(track.videoId);
         this.player.playVideo();
         AppState.isPlaying = true;
-
-        // 🔥 SOLO AÑADIDO (no rompe nada)
-        AppState.currentTrack = track;
-
         this.startUpdateInterval();
         this.updatePlayButton();
     },
@@ -106,6 +101,7 @@ const PlayerManager = {
 
     onPlayerStateChange(event) {
         const state = event.data;
+        console.log('Estado del player:', state);
         
         switch (state) {
             case YT.PlayerState.PLAYING:
@@ -118,36 +114,43 @@ const PlayerManager = {
             case YT.PlayerState.ENDED:
                 this.onTrackEnded();
                 break;
+            case YT.PlayerState.BUFFERING:
+                console.log('Buffering...');
+                break;
         }
         this.updatePlayButton();
-    },
-
-    // 🔥 SOLO MEJORADO (no rompe flujo)
-    async onTrackEnded() {
-        AppState.isPlaying = false;
-        this.updatePlayButton();
-
-        AppState.currentIndex++;
-
-        if (AppState.currentIndex >= AppState.playlist.length) {
-
-            let nuevos = [];
-
-            if (!relatedLoaded && AppState.currentTrack) {
-                relatedLoaded = true;
-                nuevos = await getRelatedVideos(AppState.currentTrack.videoId);
-            } else {
-                nuevos = await getRandomVideos();
-            }
-
-            AppState.playlist.push(...nuevos);
-        }
-
-        this.playTrack(AppState.playlist[AppState.currentIndex]);
     },
 
     onPlayerError(event) {
         console.error('Error del player YouTube:', event.data);
+        switch (event.data) {
+            case 2:
+                console.error('Parámetro inválido');
+                break;
+            case 5:
+                console.error('Error HTML5 Player');
+                break;
+            case 100:
+                console.error('Video no encontrado');
+                break;
+            case 101:
+                console.error('Video no puede reproducirse incrustado');
+                break;
+            case 150:
+                console.error('Mismo que 101');
+                break;
+        }
+    },
+
+    onTrackEnded() {
+        console.log('Track finalizado');
+        AppState.isPlaying = false;
+        this.updatePlayButton();
+        // Reproducir siguiente si hay playlist
+        if (AppState.playlist.length > 1) {
+            AppState.currentIndex = (AppState.currentIndex + 1) % AppState.playlist.length;
+            this.playTrack(AppState.playlist[AppState.currentIndex]);
+        }
     },
 
     startUpdateInterval() {
@@ -159,125 +162,172 @@ const PlayerManager = {
 
     updateProgress() {
         if (!this.isPlayerReady) return;
-
+        
         this.currentTime = this.getCurrentTime();
         this.duration = this.getDuration();
-
+        
+        // Actualizar barra de progreso
         const progressFill = document.getElementById('progress-fill');
         const progressRange = document.getElementById('progress-range');
-
+        
         if (this.duration > 0) {
             const percentage = (this.currentTime / this.duration) * 100;
             progressFill.style.width = percentage + '%';
             progressRange.max = this.duration;
             progressRange.value = this.currentTime;
         }
-
-        document.getElementById('current-time').textContent =
-            this.formatTime(this.currentTime);
-        document.getElementById('total-time').textContent =
-            this.formatTime(this.duration);
+        
+        // Actualizar tiempo actual y total
+        document.getElementById('current-time').textContent = this.formatTime(this.currentTime);
+        document.getElementById('total-time').textContent = this.formatTime(this.duration);
     },
 
     formatTime(seconds) {
         if (!seconds || isNaN(seconds)) return '0:00';
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m}:${s.toString().padStart(2, '0')}`;
+        
+        const totalSeconds = Math.floor(seconds);
+        const minutes = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
     },
 
+    // Monitorear cambios de estado en tiempo real
     startStateMonitor() {
         setInterval(() => {
             if (!this.isPlayerReady) return;
-
+            
             const playerState = this.player.getPlayerState();
-
-            if (playerState === 1 && !AppState.isPlaying) {
-                AppState.isPlaying = true;
-                this.updatePlayButton();
-            } else if (playerState === 2 && AppState.isPlaying) {
-                AppState.isPlaying = false;
-                this.updatePlayButton();
+            
+            // -1: desconocido, 0: terminado, 1: reproduciendo, 2: pausado, 3: buffering, 5: video cargado
+            if (playerState === 1) {
+                // Reproduciendo
+                if (!AppState.isPlaying) {
+                    AppState.isPlaying = true;
+                    this.updatePlayButton();
+                }
+            } else if (playerState === 2) {
+                // Pausado
+                if (AppState.isPlaying) {
+                    AppState.isPlaying = false;
+                    this.updatePlayButton();
+                }
             }
         }, 500);
     },
 
     updatePlayButton() {
+        // Actualizar botón principal del reproductor fullscreen
         const playBtn = document.getElementById('player-play-btn');
         if (playBtn) {
             const playIcon = playBtn.querySelector('.play-icon');
             const pauseIcon = playBtn.querySelector('.pause-icon');
-
+            
             if (playIcon && pauseIcon) {
                 if (AppState.isPlaying) {
+                    // Mostrar solo pausa
                     playIcon.classList.add('hidden');
                     pauseIcon.classList.remove('hidden');
                 } else {
+                    // Mostrar solo play
                     playIcon.classList.remove('hidden');
                     pauseIcon.classList.add('hidden');
                 }
             }
         }
+        
+        // Actualizar mini reproductor
+        const miniPlayBtn = document.getElementById('mini-play-btn');
+        if (miniPlayBtn) {
+            if (AppState.isPlaying) {
+                miniPlayBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                `;
+            } else {
+                miniPlayBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                `;
+            }
+        }
     },
 
     setupEventListeners() {
-
-        // ▶️ play/pause
-        document.getElementById('player-play-btn')?.addEventListener('click', () => {
-            AppState.isPlaying ? this.pause() : this.play();
-        });
-
-        // ⏮️ anterior
-        document.getElementById('player-prev-btn')?.addEventListener('click', () => {
-            if (!AppState.playlist.length) return;
-
-            AppState.currentIndex =
-                (AppState.currentIndex - 1 + AppState.playlist.length) %
-                AppState.playlist.length;
-
-            this.playTrack(AppState.playlist[AppState.currentIndex]);
-        });
-
-        // ⏭️ siguiente inteligente
-        document.getElementById('player-next-btn')?.addEventListener('click', async () => {
-            if (!AppState.playlist.length) return;
-
-            AppState.currentIndex++;
-
-            if (AppState.currentIndex >= AppState.playlist.length) {
-
-                let nuevos = [];
-
-                if (!relatedLoaded && AppState.currentTrack) {
-                    relatedLoaded = true;
-                    nuevos = await getRelatedVideos(AppState.currentTrack.videoId);
+        // Play/Pause principal
+        const playerPlayBtn = document.getElementById('player-play-btn');
+        if (playerPlayBtn) {
+            playerPlayBtn.addEventListener('click', () => {
+                if (AppState.isPlaying) {
+                    this.pause();
                 } else {
-                    nuevos = await getRandomVideos();
+                    this.play();
                 }
+            });
+        }
 
-                AppState.playlist.push(...nuevos);
-            }
+        // Mini play/pause
+        const miniPlayBtn = document.getElementById('mini-play-btn');
+        if (miniPlayBtn) {
+            miniPlayBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (AppState.isPlaying) {
+                    this.pause();
+                } else {
+                    this.play();
+                }
+            });
+        }
 
-            this.playTrack(AppState.playlist[AppState.currentIndex]);
-        });
+        // Barra de progreso
+        const progressRange = document.getElementById('progress-range');
+        if (progressRange) {
+            progressRange.addEventListener('change', (e) => {
+                this.seek(parseFloat(e.target.value));
+            });
+        }
 
-        // ⟲ retroceder
-        document.getElementById('player-rewind-btn')?.addEventListener('click', () => {
-            const newTime = Math.max(0, this.getCurrentTime() - 10);
-            this.seek(newTime);
-        });
+        // Botón retroceder 10 segundos
+        const rewindBtn = document.getElementById('player-rewind-btn');
+        if (rewindBtn) {
+            rewindBtn.addEventListener('click', () => {
+                const newTime = Math.max(0, this.getCurrentTime() - 10);
+                this.seek(newTime);
+            });
+        }
 
-        // ⟳ adelantar
-        document.getElementById('player-forward-btn')?.addEventListener('click', () => {
-            const duration = this.getDuration();
-            const newTime = Math.min(duration, this.getCurrentTime() + 10);
-            this.seek(newTime);
-        });
+        // Botón favorito
+        const favoriteBtn = document.getElementById('player-favorite-btn');
+        if (favoriteBtn) {
+            favoriteBtn.addEventListener('click', () => {
+                if (!AppState.currentTrack) return;
+                const isFav = toggleFavorite(AppState.currentTrack);
+                const btn = document.getElementById('player-favorite-btn');
+                if (isFav) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Botón adelantar 10 segundos
+        const forwardBtn = document.getElementById('player-forward-btn');
+        if (forwardBtn) {
+            forwardBtn.addEventListener('click', () => {
+                const duration = this.getDuration();
+                const newTime = Math.min(duration, this.getCurrentTime() + 10);
+                this.seek(newTime);
+            });
+        }
     }
 };
 
+// Inicializar player cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', () => {
     PlayerManager.init();
 });
 
-console.log('🔥 Player actualizado sin romper nada');
+console.log('✅ Player.js cargado correctamente');
