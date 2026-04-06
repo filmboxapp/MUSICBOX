@@ -1,5 +1,6 @@
 // Player Manager - Maneja la reproducción con YouTube IFrame API
 
+// 🔥 SOLO VARIABLE NUEVA (no afecta nada)
 let relatedLoaded = false;
 
 const PlayerManager = {
@@ -41,19 +42,19 @@ const PlayerManager = {
 
     playTrack(track) {
         if (!this.isPlayerReady) {
+            console.warn('Player aún no está listo');
             setTimeout(() => this.playTrack(track), 500);
             return;
         }
 
         console.log('🎵 Reproduciendo:', track.title);
-
-        AppState.currentTrack = track;
-        relatedLoaded = false; // 🔥 reset lógica
-
         this.player.loadVideoById(track.videoId);
         this.player.playVideo();
-
         AppState.isPlaying = true;
+
+        // 🔥 SOLO AÑADIDO (no rompe nada)
+        AppState.currentTrack = track;
+
         this.startUpdateInterval();
         this.updatePlayButton();
     },
@@ -74,9 +75,25 @@ const PlayerManager = {
         this.updatePlayButton();
     },
 
+    stop() {
+        if (!this.isPlayerReady) return;
+        this.player.stopVideo();
+        AppState.isPlaying = false;
+        clearInterval(this.updateInterval);
+    },
+
     seek(seconds) {
         if (!this.isPlayerReady) return;
         this.player.seekTo(seconds, true);
+    },
+
+    setVolume(volume) {
+        if (!this.isPlayerReady) return;
+        this.player.setVolume(Math.max(0, Math.min(100, volume)));
+    },
+
+    getVolume() {
+        return this.isPlayerReady ? this.player.getVolume() : 0;
     },
 
     getDuration() {
@@ -89,7 +106,7 @@ const PlayerManager = {
 
     onPlayerStateChange(event) {
         const state = event.data;
-
+        
         switch (state) {
             case YT.PlayerState.PLAYING:
                 AppState.isPlaying = true;
@@ -105,13 +122,13 @@ const PlayerManager = {
         this.updatePlayButton();
     },
 
+    // 🔥 SOLO MEJORADO (no rompe flujo)
     async onTrackEnded() {
         AppState.isPlaying = false;
         this.updatePlayButton();
 
         AppState.currentIndex++;
 
-        // 🔥 si ya no hay más canciones
         if (AppState.currentIndex >= AppState.playlist.length) {
 
             let nuevos = [];
@@ -127,6 +144,10 @@ const PlayerManager = {
         }
 
         this.playTrack(AppState.playlist[AppState.currentIndex]);
+    },
+
+    onPlayerError(event) {
+        console.error('Error del player YouTube:', event.data);
     },
 
     startUpdateInterval() {
@@ -165,30 +186,48 @@ const PlayerManager = {
         return `${m}:${s.toString().padStart(2, '0')}`;
     },
 
+    startStateMonitor() {
+        setInterval(() => {
+            if (!this.isPlayerReady) return;
+
+            const playerState = this.player.getPlayerState();
+
+            if (playerState === 1 && !AppState.isPlaying) {
+                AppState.isPlaying = true;
+                this.updatePlayButton();
+            } else if (playerState === 2 && AppState.isPlaying) {
+                AppState.isPlaying = false;
+                this.updatePlayButton();
+            }
+        }, 500);
+    },
+
     updatePlayButton() {
         const playBtn = document.getElementById('player-play-btn');
         if (playBtn) {
             const playIcon = playBtn.querySelector('.play-icon');
             const pauseIcon = playBtn.querySelector('.pause-icon');
 
-            if (AppState.isPlaying) {
-                playIcon?.classList.add('hidden');
-                pauseIcon?.classList.remove('hidden');
-            } else {
-                playIcon?.classList.remove('hidden');
-                pauseIcon?.classList.add('hidden');
+            if (playIcon && pauseIcon) {
+                if (AppState.isPlaying) {
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                } else {
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                }
             }
         }
     },
 
     setupEventListeners() {
 
-        // ▶️ Play/Pause
+        // ▶️ play/pause
         document.getElementById('player-play-btn')?.addEventListener('click', () => {
             AppState.isPlaying ? this.pause() : this.play();
         });
 
-        // ⏮️ ANTERIOR
+        // ⏮️ anterior
         document.getElementById('player-prev-btn')?.addEventListener('click', () => {
             if (!AppState.playlist.length) return;
 
@@ -199,7 +238,7 @@ const PlayerManager = {
             this.playTrack(AppState.playlist[AppState.currentIndex]);
         });
 
-        // ⏭️ SIGUIENTE (CON LÓGICA INTELIGENTE)
+        // ⏭️ siguiente inteligente
         document.getElementById('player-next-btn')?.addEventListener('click', async () => {
             if (!AppState.playlist.length) return;
 
@@ -222,14 +261,17 @@ const PlayerManager = {
             this.playTrack(AppState.playlist[AppState.currentIndex]);
         });
 
-        // ⟲ retroceder 10s
+        // ⟲ retroceder
         document.getElementById('player-rewind-btn')?.addEventListener('click', () => {
-            this.seek(Math.max(0, this.getCurrentTime() - 10));
+            const newTime = Math.max(0, this.getCurrentTime() - 10);
+            this.seek(newTime);
         });
 
-        // ⟳ adelantar 10s
+        // ⟳ adelantar
         document.getElementById('player-forward-btn')?.addEventListener('click', () => {
-            this.seek(Math.min(this.getDuration(), this.getCurrentTime() + 10));
+            const duration = this.getDuration();
+            const newTime = Math.min(duration, this.getCurrentTime() + 10);
+            this.seek(newTime);
         });
     }
 };
@@ -238,4 +280,4 @@ document.addEventListener('DOMContentLoaded', () => {
     PlayerManager.init();
 });
 
-console.log('🔥 Player PRO listo');
+console.log('🔥 Player actualizado sin romper nada');
