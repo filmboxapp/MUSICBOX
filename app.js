@@ -14,7 +14,7 @@ const AppState = {
 
 // Configuración
 const CONFIG = {
-    YOUTUBE_API_KEY: 'AIzaSyAWEzgmWFg_praDsE2_4axOvRyNBtJHzzc', // Reemplazar con tu API Key
+    YOUTUBE_API_KEY: 'AIzaSyAVwaV1q5U_4lpF0ZaKBz_u7JEWiEIzrsc', // Reemplazar con tu API Key
     MAX_HISTORY: 50,
     DEBOUNCE_TIME: 300,
     CACHE_TIME: 3600000 // 1 hora
