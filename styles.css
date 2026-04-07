@@ -64,10 +64,11 @@ html, body {
 }
 
 .logo {
-    width: 32px;
-    height: 32px;
-    filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
-    animation: logo-pulse 3s ease-in-out infinite;
+    width: 42px;          /* un poco más grande */
+    height: 42px;
+    object-fit: contain;  /* 👈 CLAVE para que no se deforme */
+    border-radius: 10px;  /* opcional, se ve más pro */
+    filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.6));
 }
 
 @keyframes logo-pulse {
