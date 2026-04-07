@@ -64,11 +64,13 @@ html, body {
 }
 
 .logo {
-    width: 42px;          /* un poco más grande */
-    height: 42px;
-    object-fit: contain;  /* 👈 CLAVE para que no se deforme */
-    border-radius: 10px;  /* opcional, se ve más pro */
-    filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.6));
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    background: #000;         /* 👈 recrea el fondo original */
+    padding: 8px;             /* 👈 espacio interno como icono */
+    border-radius: 14px;      /* 👈 bordes redondeados tipo app */
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
 }
 
 @keyframes logo-pulse {
