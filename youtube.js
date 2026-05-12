@@ -17,7 +17,7 @@ const YouTubeAPI = {
             // IMPORTANTE: Reemplaza con tu API Key
             const apiKey = CONFIG.YOUTUBE_API_KEY;
             
-            if (!apiKey || apiKey === 'AIzaSyDvFVnP5Bhl5lXN5bXrOfAcIzpN7XqGr5Q') {
+            if (!apiKey || apiKey === 'AIzaSyC_rCa-j9layuOFVdQdd-1VexLoky8m0EI) {
                 console.warn('⚠️ API Key no configurada o es de prueba');
                 return this.getMockData();
             }
